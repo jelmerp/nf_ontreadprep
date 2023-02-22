@@ -1,7 +1,8 @@
 
 process CONCAT_SEQSUM {
     publishDir "${params.outdir}/guppy", mode: 'copy'
-
+    label "process_low"
+    
     input:
     path seqsum_files
     

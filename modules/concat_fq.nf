@@ -1,7 +1,8 @@
 
 process CONCAT_FQ {
     publishDir "${params.outdir}/guppy", mode: 'copy'
-
+    label "process_low"
+    
     input:
     path fq_files
     
