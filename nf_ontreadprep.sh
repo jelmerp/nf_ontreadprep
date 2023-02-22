@@ -1,0 +1,1 @@
+/fs/project/PAS2380/assembly/jelmer/mcic-scripts/ont/nf_ontreadprep.sh
