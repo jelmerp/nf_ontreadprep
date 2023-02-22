@@ -2,6 +2,8 @@
 
 // Nextflow workflow to prep ONT sequences for assembly
 
+//TODO - Get base.config to work, need get_max() function
+
 // Constants
 WF_VERSION=0.1
 
@@ -12,18 +14,24 @@ def helpMessage() {
                             A S S E M B L Y   P R E P   W O R K F L O W
     ============================================================================
     REQUIRED OPTIONS:
-        --fast5_dir         <dir>   Dir with input FAST5 files
-        --guppy_config      <file>  Guppy config file
+      --fast5_dir       <dir>   Dir with input FAST5 files
+      --guppy_config    <file>  Guppy config file
+                                  - The appropriate config file depends on the flowcell + kit combination.
+                                  - Modify this file to e.g. set a different qual-score threshold. 
     
     OPTIONAL DATA I/O OPTIONS:
-        --outdir            <dir>   Final output dir for workflow results   [default: 'results/nf_asm_prep']
-        --ref_assembly      <file>  Reference genome assembly (for organel removal)
-        --organel_contigs   <str>   Comma-separated string of contigs from --ref_assembly:
-                                    reads that map to these contigs will be removed.
+      --outdir          <dir>   Final output dir for workflow results                           [default: 'results/nf_ontreadprep']
+      --ref_assembly    <file>  Reference genome assembly (for organel/contig removal)          [default: none]
+      --contig_blacklist <str>  Comma-separated string with contig names from '--ref_assembly'. [default: none]
+                                  - Reads that map to these contigs will be removed, but only
+                                    when both '--ref_assembly' and '--organel_contigs' are used.
+      --pyco_minq       <int>   Min. quality score for PycoQC to consider a read 'passed'.      [default: 10]
+      --pyco_minlen     <int>   Min. read length in bp for PycoQC to consider a read 'passed'.  [default: 1000]
+                                  - NOTE: PycoQC is run twice: with and without this threshold.
     
     UTILITY OPTIONS
-        --help                      Print this help message and exit
-        --version                   Print the workflow version and exit
+      --help                      Print this help message and exit
+      --version                   Print the workflow version and exit
     """.stripIndent()
     exit 0
 }
@@ -45,7 +53,7 @@ include { CONCAT_FQ } from './modules/concat_fq'
 include { CONCAT_SEQSUM } from './modules/concat_seqsum'
 include { PYCOQC as PYCOQC_ALL } from './modules/pycoqc'
 include { PYCOQC as PYCOQC_1K } from './modules/pycoqc'
-include { RM_ORGANEL } from './modules/rm_organel'
+include { READFILTER_CONTIGBLACKLIST } from './modules/readfilter_contigblacklist'
 
 // Check parameters
 if (!params.fast5_dir) { exit 1, '\nERROR: Input dir not specified! Use "--fast5_dir"\n' }
@@ -60,10 +68,8 @@ for (par in check_path_list) { if (par) { file(par, checkIfExists: true) } }
 // Process parameters
 fast5_files = params.fast5_dir + "/" + "*fast5"
 
-// Starting points: run everything
-basecall = true
-qc = true
-remove_organel = params.ref_assembly && params.organel_contigs ? true : false
+// Determine what to run
+filter_reads = params.ref_assembly && params.contig_blacklist ? true : false
 
 // =============================================================================
 //                              REPORT
@@ -75,12 +81,9 @@ log.info "          A S S E M B L Y   P R E P   W O R K F L O W"
 log.info "======================================================================"
 log.info "Parameters:"
 params.each { k, v -> if (v) { println "${k}: ${v}" } }
-log.info "======================================================================"
 log.info ""
-// Report what will be run
-//println "Subset FASTQ files?                    ${subset_fq}"
-//log.info "======================================================================"
-
+println "Remove reads mapping to blacklisted contigs?        ${filter_reads}"
+log.info "======================================================================"
 
 // =============================================================================
 //                            SET-UP INPUT CHANNELS
@@ -104,28 +107,23 @@ ch_ref = Channel.fromPath(params.ref_assembly, checkIfExists: true)
 // Workflow
 workflow {
 
-    // Basecalling and output file processing
-    if (basecall) {
-        // Guppy basecalling
-        GUPPY(ch_reads, ch_guppy_config)
+    // Guppy basecalling
+    GUPPY(ch_reads, ch_guppy_config)
         
-        // Concatenate FASTQs
-        ch_fq_separate = GUPPY.out.fq.collect()
-        ch_fq = CONCAT_FQ(ch_fq_separate).fq
+    // Concatenate basecalled FASTQs
+    ch_fq_separate = GUPPY.out.fq.collect()
+    ch_fq = CONCAT_FQ(ch_fq_separate).fq
 
-        // Concatenate seqsums
-        ch_seqsum_separate = GUPPY.out.seqsum.collect()
-        ch_seqsum = CONCAT_SEQSUM(ch_seqsum_separate).seqsum
-    }
+    // Concatenate seqsums
+    ch_seqsum_separate = GUPPY.out.seqsum.collect()
+    ch_seqsum = CONCAT_SEQSUM(ch_seqsum_separate).seqsum
 
     // Read QC
-    if (qc) {
-        PYCOQC_ALL(ch_seqsum, 0)
-        PYCOQC_1K(ch_seqsum, 1000)
-    }
+    PYCOQC_ALL(ch_seqsum, 0, params.pyco_minq)
+    PYCOQC_1K(ch_seqsum, params.pyco_minlen, params.pyco_minq)
 
-    if (remove_organel) {
-        RM_ORGANEL(ch_fq, ch_ref, params.organel_contigs)
+    if (filter_reads) {
+        READFILTER_CONTIGBLACKLIST(ch_fq, ch_ref, params.contig_blacklist)
     }
 }
 
