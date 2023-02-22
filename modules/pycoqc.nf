@@ -1,11 +1,10 @@
 process PYCOQC {
     publishDir "${params.outdir}/pycoqc", mode: 'copy'
 
-    //TODO Quality argument
-
     input:
     path seqsum
     val min_pass_len
+    val min_pass_qual
     
     output:
     path "*html", emit: report
@@ -18,6 +17,7 @@ process PYCOQC {
     pycoQC \
         -f ${seqsum} \
         -o ${outfile} \
+        --min_pass_qual ${min_pass_qual} \
         ${len_arg}
 
     pycoQC --version > version.log
