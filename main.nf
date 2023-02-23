@@ -12,7 +12,7 @@ WF_VERSION=0.1
 def helpMessage() {
     log.info"""
     ============================================================================
-                            A S S E M B L Y   P R E P   W O R K F L O W
+                        O N T    R E A D   P R E P   W O R K F L O W
     ============================================================================
     REQUIRED OPTIONS:
       --fast5_dir       <dir>   Dir with input FAST5 files
