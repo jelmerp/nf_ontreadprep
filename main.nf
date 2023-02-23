@@ -2,7 +2,8 @@
 
 // Nextflow workflow to prep ONT sequences for assembly
 
-//TODO - Get base.config to work, need get_max() function
+//TODO - Don't use symlinks for scripts! Won't be included in repo
+//TODO - Get base config to work!
 
 // Constants
 WF_VERSION=0.1
@@ -83,7 +84,7 @@ log.info "Parameters:"
 params.each { k, v -> if (v) { println "${k}: ${v}" } }
 log.info ""
 println "Remove reads mapping to blacklisted contigs?        ${filter_reads}"
-log.info "======================================================================"
+log.info "====================================================================\n"
 
 // =============================================================================
 //                            SET-UP INPUT CHANNELS
