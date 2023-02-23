@@ -4,17 +4,21 @@
 This small, simple Nextflow workflow will take as its main input a directory of
 Oxford Nanopore Technologies (ONT) `FAST5` files, and will:
 
-- Run `Guppy` (GPU mode) base-calling to produce `FASTQ` files (one per input `FAST5`)
+- Run `Guppy` in GPU mode to base-call and produce `FASTQ` files
+  (one file per input `FAST5`)
 
 - Concatenate all `FASTQ` files into 1 large, gzipped file
 
 - Concatenates all `sequencing_summary` files produced by Guppy
 
-- Run `PycoQC` for read QC
+- Run `PycoQC` for read QC using the concatenated `sequencing_summary` file.
+  (Run twice, once with a minimum read length, to get stats for longer reads.)
 
-- Optionally, remove reads that map to specific contigs
+- Optionally, remove reads from the concatenated `FASTQ` that map to specific contigs
   (in practice, I am using this to remove organelle-derived reads prior
-  to assembling a plant genome with these reads)
+  to assembling a plant genome with these reads).
+  To do so, you'll have to input a reference genome nucleotide FASTA file,
+  and a list of "blacklisted" contig/scaffold IDs.
 
 ## Workflow usage
 
