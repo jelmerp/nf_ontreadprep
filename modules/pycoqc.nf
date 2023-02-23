@@ -12,12 +12,13 @@ process PYCOQC {
     
     script:
     len_arg = min_pass_len ? "--min_pass_len ${min_pass_len}" : ""
+    qual_arg = min_pass_qual ? "--min_pass_qual ${min_pass_qual}" : ""
     outfile = min_pass_len ? "pycoqc_minlen.html" : "pycoqc.html" 
     """
     pycoQC \
         -f ${seqsum} \
         -o ${outfile} \
-        --min_pass_qual ${min_pass_qual} \
+        ${qual_arg} \
         ${len_arg}
 
     pycoQC --version > version.log
