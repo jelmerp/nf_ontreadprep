@@ -1,1 +1,0 @@
-/fs/project/PAS2380/assembly/jelmer/workflows/ontreadprep/../../mcic-scripts/map/minimap.sh
