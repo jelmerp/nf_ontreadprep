@@ -9,6 +9,8 @@ Oxford Nanopore Technologies (ONT) `FAST5` files, and will:
 
 - Concatenate all `FASTQ` files into 1 large, gzipped file
 
+- Remove adapters with `Porechop`
+
 - Concatenates all `sequencing_summary` files produced by Guppy
 
 - Run `PycoQC` for read QC using the concatenated `sequencing_summary` file.
@@ -28,9 +30,10 @@ following options:
 
 ```
 ============================================================================
-                  O N T    R E A D   P R E P   W O R K F L O W
+                    O N T    R E A D   P R E P   W O R K F L O W
 ============================================================================
 REQUIRED OPTIONS:
+  --run_id          <str>   Run ID to name output files
   --fast5_dir       <dir>   Dir with input FAST5 files
   --guppy_config    <file>  Guppy config file
                               - The appropriate config file depends on the flowcell + kit combination.
@@ -46,9 +49,12 @@ OPTIONAL DATA I/O OPTIONS:
   --pyco_minlen     <int>   Min. read length in bp for PycoQC to consider a read 'passed'.  [default: 1000]
                               - NOTE: PycoQC is run twice: with and without this threshold.
 
-UTILITY OPTIONS
-  --help                      Print this help message and exit
-  --version                   Print the workflow version and exit
+OPTIONS TO SKIP PARTS OF THE WORKFLOW:
+  --skip_porechop           Don't run Porechop to remove adapters
+
+UTILITY OPTIONS:
+  --help                    Print this help message and exit
+  --version                 Print the workflow version and exit
 ```
 
 ## Shell wrapper script
@@ -59,27 +65,28 @@ using `sbatch -A <PROJECT-NAME> nf_ontreadprep.sh` and some of the following
 options:
 
 ```
-        nf_ontreadprep.sh (v. 1.0): Run nf_ontreadprep
-        ==============================================
+        mcic-scripts/ont/nf_ontreadprep.sh (v. 1.0): Run nf_ontreadprep
+        ==============================================================
 DESCRIPTION:
   Nextflow workflow to prepare ONT FAST5 reads (e.g. basecalling, QC)
 
 USAGE:
-  sbatch nf_ontreadprep.sh -i <input-file> -o <output-dir> [...]
-  bash nf_ontreadprep.sh -h
+  sbatch mcic-scripts/ont/nf_ontreadprep.sh -i <input-file> -o <output-dir> [...]
+  bash mcic-scripts/ont/nf_ontreadprep.sh -h
 
 REQUIRED OPTIONS:
   -i/--fast5_dir  <dir>   Input dir with FAST5 files
   --guppy_config  <file>  Guppy config file
 
 OTHER KEY OPTIONS:
+  --run_id        <str>   Run ID to name output files
   --ref_assembly  <file>  Reference genome assembly nucleotide FASTA file
   --contig_blacklist<str> Comma-separated list of contigs to remove reads for
   -o/--outdir     <dir>   Output dir (will be created if needed)
   --more_args     <str>   Quoted string with more argument(s) for nf_ontreadprep
 
 NEXTFLOW-RELATED OPTIONS:
-  -profile        <str>  Profile(s) to use from config files          [default: 'singularity']
+  -profile        <str>  Profile(s) to use from config files          [default: 'conda,test']
   -work-dir       <dir>  Scratch (work) dir for the workflow          [default: '/fs/scratch/<OSC-proj>/<user>/ont_readprep']
   -c/-config      <file  Additional config file                       [default: none]
                            - Settings in this file will override default settings
@@ -93,5 +100,12 @@ UTILITY OPTIONS:
   -v/--version            Print the version of nf_ontreadprep and exit
 
 EXAMPLE COMMANDS:
-  sbatch nf_ontreadprep.sh -i data/fast5 --guppy_config config/dna_r10.4.1_e8.2_260bps_sup.cfg
+  sbatch mcic-scripts/ont/nf_ontreadprep.sh -i data/fast5 --guppy_config config/dna_r10.4.1_e8.2_260bps_sup.cfg
+
+MAIN OUTPUT FILES:
+  - PycoQC HTML reports in the folder pycoqc 
+  - A single processed gzipped FASTQ file
+
+TOOL DOCUMENTATION:
+  - Docs: https://github.com/jelmerp/nf_ontreadprep
 ```

@@ -5,12 +5,13 @@ process CONCAT_FQ {
     
     input:
     path fq_files
+    val run_id
     
     output:
-    path "concat.fastq.gz", emit: fq
+    path "*.fastq.gz", emit: fq
     
     script:
     """
-    cat ${fq_files} > concat.fastq.gz
+    cat ${fq_files} > ${run_id}.fastq.gz
     """
 }

@@ -2,7 +2,6 @@
 
 // Nextflow workflow to prep ONT sequences for assembly
 
-//TODO - Don't use symlinks for scripts! Won't be included in repo
 //TODO - Get base config to work!
 
 // Constants
@@ -15,6 +14,7 @@ def helpMessage() {
                         O N T    R E A D   P R E P   W O R K F L O W
     ============================================================================
     REQUIRED OPTIONS:
+      --run_id          <str>   Run ID to name output files
       --fast5_dir       <dir>   Dir with input FAST5 files
       --guppy_config    <file>  Guppy config file
                                   - The appropriate config file depends on the flowcell + kit combination.
@@ -30,9 +30,12 @@ def helpMessage() {
       --pyco_minlen     <int>   Min. read length in bp for PycoQC to consider a read 'passed'.  [default: 1000]
                                   - NOTE: PycoQC is run twice: with and without this threshold.
     
-    UTILITY OPTIONS
-      --help                      Print this help message and exit
-      --version                   Print the workflow version and exit
+    OPTIONS TO SKIP PARTS OF THE WORKFLOW:
+      --skip_porechop           Don't run Porechop to remove adapters
+
+    UTILITY OPTIONS:
+      --help                    Print this help message and exit
+      --version                 Print the workflow version and exit
     """.stripIndent()
     exit 0
 }
@@ -50,6 +53,7 @@ if (params.version) versionMessage()
 
 // Include modules
 include { GUPPY } from './modules/guppy'
+include { PORECHOP } from './modules/porechop'
 include { CONCAT_FQ } from './modules/concat_fq'
 include { CONCAT_SEQSUM } from './modules/concat_seqsum'
 include { PYCOQC as PYCOQC_ALL } from './modules/pycoqc'
@@ -71,6 +75,7 @@ fast5_files = params.fast5_dir + "/" + "*fast5"
 
 // Determine what to run
 filter_reads = params.ref_assembly && params.contig_blacklist ? true : false
+run_porechop = params.skip_porechop ? false : true
 
 // =============================================================================
 //                              REPORT
@@ -78,12 +83,13 @@ filter_reads = params.ref_assembly && params.contig_blacklist ? true : false
 // Run info
 log.info ""
 log.info "======================================================================"
-log.info "          A S S E M B L Y   P R E P   W O R K F L O W"
+log.info "          O N T   R E A D   P R E P   W O R K F L O W"
 log.info "======================================================================"
-log.info "Parameters:"
+log.info "PARAMETERS:"
 params.each { k, v -> if (v) { println "${k}: ${v}" } }
 log.info ""
 println "Remove reads mapping to blacklisted contigs?        ${filter_reads}"
+println "Run porechop?                                       ${run_porechop}"
 log.info "====================================================================\n"
 
 // =============================================================================
@@ -107,22 +113,25 @@ ch_ref = Channel.fromPath(params.ref_assembly, checkIfExists: true)
 // =============================================================================
 // Workflow
 workflow {
-
     // Guppy basecalling
     GUPPY(ch_reads, ch_guppy_config)
         
     // Concatenate basecalled FASTQs
     ch_fq_separate = GUPPY.out.fq.collect()
-    ch_fq = CONCAT_FQ(ch_fq_separate).fq
+    ch_fq = CONCAT_FQ(ch_fq_separate, params.run_id).fq   //TODO add run ID to give filename
 
+    // Adapter removal with Porechop
+    if (run_porechop) ch_fq = PORECHOP(ch_fq).fq
+    
     // Concatenate seqsums
     ch_seqsum_separate = GUPPY.out.seqsum.collect()
     ch_seqsum = CONCAT_SEQSUM(ch_seqsum_separate).seqsum
 
-    // Read QC
+    // Read QC with PycoQC
     PYCOQC_ALL(ch_seqsum, 0, params.pyco_minq)
     PYCOQC_1K(ch_seqsum, params.pyco_minlen, params.pyco_minq)
 
+    // Remove reads from blacklisted contigs
     if (filter_reads) {
         READFILTER_CONTIGBLACKLIST(ch_fq, ch_ref, params.contig_blacklist)
     }
