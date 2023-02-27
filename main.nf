@@ -118,7 +118,7 @@ workflow {
         
     // Concatenate basecalled FASTQs
     ch_fq_separate = GUPPY.out.fq.collect()
-    ch_fq = CONCAT_FQ(ch_fq_separate, params.run_id).fq   //TODO add run ID to give filename
+    ch_fq = CONCAT_FQ(ch_fq_separate, params.run_id).fq
 
     // Adapter removal with Porechop
     if (run_porechop) ch_fq = PORECHOP(ch_fq).fq

@@ -14,9 +14,11 @@ process READFILTER_CONTIGBLACKLIST {
     
     script:
     """
+    fq_id=`basename ${fq_in} .fastq.gz`
+
     rm_organel.sh \
         --fq_in ${fq_in} \
-        --fq_out concat_filtered.fastq.gz \
+        --fq_out \${fq_id}_filt.fastq.gz \
         --ref ${ref_assembly} \
         --seqids ${seq_ids}
 

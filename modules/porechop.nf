@@ -1,6 +1,6 @@
 
 process PORECHOP {
-    publishDir "${params.outdir}/porechop", mode: 'copy', pattern: "logs/*"
+    publishDir "${params.outdir}/porechop", mode: 'copy'
     label 'process_high_memory'
     
     input:
